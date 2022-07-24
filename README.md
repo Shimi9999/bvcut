@@ -6,5 +6,5 @@ Divide video with black screen
 
 ## Usage
 ```
-bvcut <videopath>
+bvcut [-per <float>][enc=<bool>] <videopath>
 ```
