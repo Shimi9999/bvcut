@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/cheggaaa/pb/v3 v3.1.0
-	gocv.io/x/gocv v0.23.0
+	gocv.io/x/gocv v0.35.0
 )
 
 require (
