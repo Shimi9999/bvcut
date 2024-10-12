@@ -1,5 +1,11 @@
 /* Black Video Cut */
 
+// ビルドにはgocvのためにMinGW-W64とCMakeとOpenCVが必要
+// 参照: https://gocv.io/getting-started/windows/
+
+// 実行にはffpmegが必要
+// 音声エンコードにfdk_aacを使用したい場合はffmpegを自分でビルドする必要あり
+
 package main
 
 import (
@@ -17,11 +23,13 @@ func main() {
 	var (
 		per = flag.Float64("per", 0.5, "per sec")
 		enc = flag.Bool("enc", true, "encode")
+		cv  = flag.String("cv", "libx264", "video codec")
+		ca  = flag.String("ca", "libfdk_aac", "audio codec")
 	)
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		fmt.Println("Usage: bvcut [-per <float>][enc=<bool>] <videopath>")
+		fmt.Println("Usage: bvcut [-per <float>][-enc=<bool>][-cv <VideoCodec>][-ca <AudioCodec>] <videopath>")
 		os.Exit(1)
 	}
 
@@ -29,7 +37,7 @@ func main() {
 
 	video, err := gocv.VideoCaptureFile(filename)
 	if err != nil {
-		fmt.Println("file open error")
+		fmt.Println("file open error:", err.Error())
 		os.Exit(1)
 	}
 	defer video.Close()
@@ -74,7 +82,7 @@ func main() {
 
 	for i := 1; i < len(blackSecs); i++ {
 		outputFilename := "output_" + strconv.Itoa(i-1) + ".mp4"
-		err := createVideo(filename, outputFilename, blackSecs[i-1], blackSecs[i], *enc)
+		err := createVideo(filename, outputFilename, blackSecs[i-1], blackSecs[i], *enc, *cv, *ca)
 		if err != nil {
 			fmt.Println("cut video error:", err.Error())
 			os.Exit(1)
@@ -86,7 +94,7 @@ func toMinute(sec float64) string {
 	return fmt.Sprintf("%d:%02d", int(sec/60.0), (int(sec) % 60))
 }
 
-func createVideo(srcFilename string, dstFilename string, startSec float64, endSec float64, enc bool) error {
+func createVideo(srcFilename string, dstFilename string, startSec float64, endSec float64, enc bool, cv, ca string) error {
 	start := strconv.FormatFloat(startSec, 'f', 8, 64)
 	end := strconv.FormatFloat(endSec-startSec, 'f', 8, 64)
 	fmt.Println(dstFilename + ": " + toMinute(startSec) + " ~ " + toMinute(endSec))
@@ -96,8 +104,8 @@ func createVideo(srcFilename string, dstFilename string, startSec float64, endSe
 		// encode with enc
 		err = exec.Command("ffmpeg", "-ss", start, "-t", end, "-i", srcFilename,
 			/*"-r", "60",*/ "-vsync", "1",
-			"-c:v", "libx264", "-b:v", "12M",
-			"-c:a", "libfdk_aac", "-b:a", "128k", dstFilename).Run()
+			"-c:v", cv, "-b:v", "12M",
+			"-c:a", ca, "-b:a", "128k", dstFilename).Run()
 	} else {
 		err = exec.Command("ffmpeg", "-ss", start, "-t", end, "-i", srcFilename,
 			"-c", "copy", dstFilename).Run()
